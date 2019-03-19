@@ -86,7 +86,7 @@ for i1 = 0, n_elements(imf.x)-2 do begin
   normB = B/norm(B,lnorm=2)
   normE = crossp([1,0,0],normB)
   X = [1,0,0]
-  Y = crossp(E,X)
+  Y = crossp(normE,X)
   Z = normE
   ; rottheta is the rotation theta. when used:
   ; x'=cost*x+sint*y, y'=-sint*x+cost*y
@@ -101,9 +101,9 @@ for i1 = 0, n_elements(imf.x)-2 do begin
     dB1:dB1, dB2:dB2,$
     delta1:delta1, delta2:delta2,$
     angle:angle,$
-    flag:flag,$
+    flag:0,$
     rottheta:rottheta}
-    
+
   if ~keyword_set(imfinfo) then begin
     imfinfo = imfinfotemp
   endif else begin
