@@ -92,19 +92,18 @@ for i1 = 0, n_elements(imf.x)-2 do begin
   ; x'=cost*x+sint*y, y'=-sint*x+cost*y
   rottheta = acos(Y*[0,1,0])  
 
-  imfinfotemp = {
-    imfinfo,$
+  imfinfotemp = {imfinfo,$
     time:imf.x[i1],$
     mag:B,$
     orb:orb1,$
     msemat:[[X],[Y],[Z]],$
-    B1:B1. B2:B2,$
+    B1:B1, B2:B2,$
     dB1:dB1, dB2:dB2,$
     delta1:delta1, delta2:delta2,$
     angle:angle,$
     flag:flag,$
-    rottheta:rottheta$
-  }
+    rottheta:rottheta}
+    
   if ~keyword_set(imfinfo) then begin
     imfinfo = imfinfotemp
   endif else begin
