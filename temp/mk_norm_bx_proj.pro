@@ -7,17 +7,26 @@
 ; 
 ;
 ;USAGE:	
+; mk_norm_bx_proj
 ;
 ;INPUTS:	
+; None
 ;
 ;KEYWORDS:	
+;
+; proxy: use proxy imf data
+; 
+; noexecution: do nothing (used to get the savpath and savname)
+; 
+; savpath, savname: return savpath and savname
+; 
 ;
 ;CREATED BY: 	 huangzs on Mar 18, 2019
 ;UPDATES:	
 ;
 ;-
 
-pro mk_norm_bx_proj
+pro mk_norm_bx_proj,proxy=proxy,savpath=savpath,savname=savname,noexecution=noexecution
 
 compile_opt idl2
 
