@@ -69,7 +69,7 @@ for i1 = 0, n_elements(imf.x)-2 do begin
   orb2 = imf.orb[i1+1]
   
   ; no ambient upstream condition observation, dismiss
-  if (orbnum2 - orbnum1) gt 1 then begin
+  if (orb2 - orb1) gt 1 then begin
     continue
   endif
   
