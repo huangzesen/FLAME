@@ -55,7 +55,7 @@ proxypath = '/home/huangzs/work/fr/IMFproxy/'
 savpath = '/home/huangzs/work/thesis/analysis/norm_bx_proj/'
 savname = 'mk_norm_bx_proj.sav'
 
-if keyword_set(noexecution) then return
+if keyword_set(noexecution) and file_test(savpath+savname) then return
 if ~file_test(savpath,/directory) then file_mkdir,savpath
 
 ; load IMF data
