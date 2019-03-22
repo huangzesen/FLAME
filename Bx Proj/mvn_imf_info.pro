@@ -113,7 +113,7 @@ for i1 = 0, n_elements(imf.x)-2 do begin
   Z = normE
   ; rottheta is the rotation theta. when used:
   ; x'=cost*x+sint*y, y'=-sint*x+cost*y
-  rottheta = acos(Y*[0,1,0])  
+  rottheta = acos(total(Y*[0,1,0]))  
 
   imfinfotemp = {imfinfo,$
     time:imf.x[i1],$
