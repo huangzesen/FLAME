@@ -6,8 +6,26 @@
 ; the convention in Dibraccio et al (2018) figure 2.
 ; 
 ;
-;USAGE:	
-; mk_norm_bx_proj
+;USAGE:
+;	
+; mk_norm_bx_proj, [/mse], [/proxy]
+; 
+;   Calculate the result matrix and save to the default directory with default name
+;   /home/huangzs/work/thesis/analysis/mk_norm_bx_proj/date/ + savname
+;   
+; mk_norm_bx_proj, /para, [config = config]
+; 
+;   Parallelized calculation, pass NCHUNK, SERINUM using a structure, otherwise
+;   the program will let you enter the parameters manually.
+;   
+; mk_norm_bx_proj, /noexe, [/preview], [savpath = savpath], [savname = savname], $
+;   [savfiles = savfiles], [savindex = savindex]
+;   
+;   Retrieve the sav files by using keyword NOEXECUTION, savpath, savname and savfiles 
+;   can be retrieved using keyword SAVPATH, SAVNAME and SAVFILES. If you want to have a 
+;   quick look of the data, you can use keyword PREVIEW to let the program generate a 
+;   preview image of the result. SAVINDEX can be used to combine several sav files, 
+;   otherwise the program will let you enter index manually with only one file allowed. 
 ;
 ;INPUTS:	
 ; None
@@ -22,17 +40,26 @@
 ; 
 ; PARALLEL: (Optional) Parallelize the program
 ; 
-; CONFIG: (Optional) Parallelization configuration, should be a structure containing:
+; CONFIG: (Optional) program configuration, a structure containing:
 ;   'nchunk' : number of chunks
 ;   'serinum' : serial number of this chunk
 ; 
 ; SAVPATH, SAVNAME, SAVFILES: return savpath and savname
 ; 
 ; PREVIEW: (Optional) provide a preview of the result
+;
+; OPT_PREVIEW: (Optional) preview options, should be a structure containing:
+
+;   'mode' : available options
+;     'average' : Average ratio in x direction
+;     'slice' : show the pattern in slice
+
+;   'pars' : parameter of the mode, if aplicable, please check the code for 
+;     for available options.
 ; 
 ; SAVINDEX: (Optional) Use when PREVIEW is used, to pass a array of index of preview sav files
 ; 
-; ORBSTART, ORBEND: start/end of looping orbit
+; ORBSTART, ORBEND: start/end of looping orbit, default is 212/7640
 ; 
 ;
 ;CREATED BY: 	 huangzs on Mar 18, 2019
@@ -51,6 +78,7 @@ pro mk_norm_bx_proj, $
   orbstart=orbstart, $
   orbend=orbend, $
   preview=preview, $
+  opt_preview=opt_preview, $
   savindex=savindex, $
   noexecution=noexecution
 
@@ -71,16 +99,32 @@ if ~keyword_set(savname) then $
   savname = 'ratio1.sav'
 
 
-; show available IDL sav files
+;-----------------------------------Preview------------------------------------;
 if keyword_set(noexecution) then begin
   savfiles = file_search(savpath0,'*.sav')
   print,'Available sav files:'
   for i1 = 0, n_elements(savfiles)-1 do $
     print,strcompress(string(i1)),' ',savfiles[i1]
     
-  ; Preview
   if keyword_set(preview) then begin
-    ; index of previews
+
+    ;-----------------------PREVIEW OPTIONS-----------------------;
+    ; mode:
+    ;   'average' : average Bx in x direction
+    ;   'slice' : slice plot
+    ; pars:
+    ;   'flag' : useless
+    ;   'nslice' : (for mode 'slice') number of slices
+    ;   'minmaxval' : min/max value for function image
+    ;-------------------------------------------------------------;
+    if ~keyword_set(opt_preview) then begin
+      opt_preview = create_struct(name = 'opt_preview', $
+        'mode', 'slice', $
+        'pars', {pars,flag:0,nslice:3,minmaxval:0.15})
+    endif
+    
+
+    ; combine sav files
     if ~keyword_set(savindex) then begin
       read,'Select sav file: ', ind
       if ind eq -1 then return    ; Return if ind == -1
@@ -120,66 +164,40 @@ if keyword_set(noexecution) then begin
       gridp = gridp0
     endif
     
-    ; sum-up at the x direction, preparing the image
+    ; preparing the image
     valm = gridm.val
     valp = gridp.val
     idxm = where(~finite(valm))
     idxp = where(~finite(valp))
     valm[idxm] = 0
     valp[idxp] = 0
-    valmyz = total(valm[0:50,*,*],1)/50
-    valpyz = total(valp[0:50,*,*],1)/50
-    print,'Max/Min of -Y IMF period: ', max(valmyz), min(valmyz)
-    print,'Max/Min of +Y IMF period: ', max(valpyz), min(valpyz)
     
-    if keyword_set(mse) then begin
-      xtitle = '$Y_{MSE}/Rm$'
-      YTITLE='$Z_{MSE}/Rm$'
-      TITLE = 'Bx Drape Pattern Preview (MSE)'
-    endif else begin
-      XTITLE='$Y_{MSO}/Rm$'
-      YTITLE='$Z_{MSO}/Rm$'
-      TITLE = 'Bx Drape Pattern Preview (MSO)'
-    endelse
-    
-    ct = COLORTABLE(70, /REVERSE)
-    minmaxval = 0.15
-    
-    gm = IMAGE(valmyz, indgen(101,start=100,increment=-1), indgen(101), $
-      RGB_TABLE=ct, AXIS_STYLE=2, MARGIN=0.1, $
-      MIN_VALUE = -minmaxval, MAX_VALUE = minmaxval, $
-      XTITLE=xtitle, $
-      YTITLE=ytitle, $
-      XTICKVALUES=ceil(findgen(7)*100/6), $
-      YTICKVALUES=ceil(findgen(7)*100/6), $
-      XTICKNAME=['3','2','1','0','-1','-2','-3'], $
-      YTICKNAME=['-3','-2','-1','0','1','2','3'], $
-      TITLE='$-Y_{IMF}$ ' + TITLE, $
-      POSITION=[0.18,0.10,0.98,0.90])
-    
-    cbm = COLORBAR(TARGET=gm, ORIENTATION=1, $
-      POSITION=[0.10,0.05,0.15,0.9], TICKDIR=1, $
-      TITLE='$B_X/B$ (m)')
+    ; manipulate the matrix according to opt_preview
+    mode = opt_preview.mode
+    pars = opt_preview.pars
 
-    gp = IMAGE(valpyz, indgen(101,start=100,increment=-1), indgen(101), $
-      RGB_TABLE=ct, AXIS_STYLE=2, MARGIN=0.1, $
-      MIN_VALUE=-minmaxval, MAX_VALUE=minmaxval, $
-      XTITLE=xtitle, $
-      YTITLE=ytitle, $
-      XTICKVALUES=ceil(findgen(7)*100/6), $
-      YTICKVALUES=ceil(findgen(7)*100/6), $
-      XTICKNAME=['3','2','1','0','-1','-2','-3'], $
-      YTICKNAME=['-3','-2','-1','0','1','2','3'], $
-      TITLE='$+Y_{IMF}$ ' + TITLE, $
-      POSITION=[0.18,0.10,0.98,0.90])
-      
-    cbp = COLORBAR(TARGET=gp, ORIENTATION=1, $
-      POSITION=[0.10,0.05,0.15,0.9], TICKDIR=1, $
-      TITLE='$B_X/B$ (m)')
+    if mode eq 'average' then begin
+      valmyz = total(valm[0:50,*,*],1)/50
+      valpyz = total(valp[0:50,*,*],1)/50
+      print,'Max/Min of -Y IMF period: ', max(valmyz), min(valmyz)
+      print,'Max/Min of +Y IMF period: ', max(valpyz), min(valpyz)
+      bx_drape_preview, valmyz, valpyz, minmaxval=pars.minmaxval, mse=mse
+    endif else if mode eq 'slice' then begin
+      for i1 = 0, n_elements(pars.nslice)-1 do begin
+        valmyz = total(valm[floor(i1*50./nslice):ceil((i1+1)*50./nslice),*,*],1)/50
+        valpyz = total(valp[floor(i1*50./nslice):ceil((i1+1)*50./nslice),*,*],1)/50
+        bx_drape_preview, valmyz, valpyz, minmaxval=pars.minmaxval, mse=mse
+      endfor
+    endif
+    
+    
+
   endif
   
   return
 endif
+
+;------------------------------end of preview----------------------------------;
 
 
 ; some constants
@@ -209,8 +227,6 @@ if keyword_set(parallel) then begin
   endelse  
   
   ; Setting the path
-  ;timestr = time_string(systime(/seconds))
-  ;datestr = timestr.substring(0,9)
   savpath = savpath +'para'+'/'
   
   ; Setting the savname
@@ -290,7 +306,6 @@ for orb = orbstart, orbend-1 do begin
       zp = z*cos(imfinfo0.rottheta) - y*sin(imfinfo0.rottheta)
       y = yp
       z = zp
-      ;savname = savname.substring(0,-5)+'-mse.sav'
     endif
  
     ; Add ratio to the grid
