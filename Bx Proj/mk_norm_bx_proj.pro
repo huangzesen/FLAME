@@ -173,7 +173,7 @@ if keyword_set(noexecution) then begin
       TITLE='$+Y_{IMF}$ ' + TITLE, $
       POSITION=[0.18,0.10,0.98,0.90])
       
-    cbm = COLORBAR(TARGET=gp, ORIENTATION=1, $
+    cbp = COLORBAR(TARGET=gp, ORIENTATION=1, $
       POSITION=[0.10,0.05,0.15,0.9], TICKDIR=1, $
       TITLE='$B_X/B$ (m)')
   endif
