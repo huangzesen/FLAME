@@ -26,6 +26,9 @@
 ;   quick look of the data, you can use keyword PREVIEW to let the program generate a 
 ;   preview image of the result. SAVINDEX can be used to combine several sav files, 
 ;   otherwise the program will let you enter index manually with only one file allowed. 
+;   
+; examples of OPT_PREVIEW0:
+;   {MODEs: 'average', MINMAXVAL: 0.8, NOIMFSECTOR: 1}
 ;
 ;INPUTS:	
 ; None
@@ -48,14 +51,12 @@
 ; 
 ; PREVIEW: (Optional) provide a preview of the result
 ;
-; OPT_PREVIEW: (Optional) preview options, should be a structure containing:
+; OPT_PREVIEW0: (Optional) preview options, should be a structure containing:
 
 ;   'mode' : available options
 ;     'average' : Average ratio in x direction
 ;     'slice' : show the pattern in slice
-
-;   'pars' : parameter of the mode, if aplicable, please check the code for 
-;     for available options.
+;   please check the code for available keywords
 ; 
 ; SAVINDEX: (Optional) Use when PREVIEW is used, to pass a array of index of preview sav files
 ; 
@@ -78,7 +79,7 @@ pro mk_norm_bx_proj, $
   orbstart=orbstart, $
   orbend=orbend, $
   preview=preview, $
-  opt_preview=opt_preview, $
+  opt_preview0=opt_preview0, $
   savindex=savindex, $
   noexecution=noexecution
 
@@ -90,7 +91,7 @@ compile_opt idl2
 
 if ~keyword_set(savpath) then begin
   timestr = time_string(systime(/seconds))
-  datestr = timestr.substring(0,9)
+  datestr = timestr.substring(0,9) + '/'
   savpath0 = '/home/huangzs/work/thesis/analysis/norm_bx_proj/'
   savpath = '/home/huangzs/work/thesis/analysis/norm_bx_proj/'+datestr
 endif
@@ -116,12 +117,18 @@ if keyword_set(noexecution) then begin
     ;   'flag' : useless
     ;   'nslice' : (for mode 'slice') number of slices
     ;   'minmaxval' : min/max value for function image
+    ;   'alt' : abandon data below alt
+    ;   'npixel' : n pixel of the grid
+    ;   'noIMFsector' : combine +By IMF and -By IMF period
     ;-------------------------------------------------------------;
-    if ~keyword_set(opt_preview) then begin
-      opt_preview = create_struct(name = 'opt_preview', $
-        'mode', 'slice', $
-        'pars', {pars,flag:0,nslice:3,minmaxval:0.15})
-    endif
+    
+    delvar, opt_preview
+    pars0 = {pars, flag: 0, nslice: 3, alt: 1000D, npixel: 101}
+    if ~keyword_set(opt_preview0) then begin
+      opt_preview = {opt_preview, mode: 'average', minmaxval: 0.1, INHERITS pars0}
+    endif else begin
+      opt_preview = create_struct(name='opt_preview', opt_preview0, pars0)
+    endelse
     
 
     ; combine sav files
@@ -154,8 +161,8 @@ if keyword_set(noexecution) then begin
           gridm.val = valm
           gridp.val = valp
           ; weighted addition
-          gridm0.val = ((gridm0.val * gridm0.n) + (gridm.val * gridm.n)) / (gridm0.n + gridm.n)
-          gridp0.val = ((gridp0.val * gridp0.n) + (gridp.val * gridp.n)) / (gridp0.n + gridp.n)
+          gridm0.val = ((gridm0.val * gridm0.n) + (gridm.val * gridm.n)) / float(gridm0.n + gridm.n)
+          gridp0.val = ((gridp0.val * gridp0.n) + (gridp.val * gridp.n)) / float(gridp0.n + gridp.n)
           gridm0.n = gridm0.n + gridm.n
           gridp0.n = gridp0.n + gridp.n  
         endelse
@@ -164,30 +171,107 @@ if keyword_set(noexecution) then begin
       gridp = gridp0
     endif
     
+        
+    ; manipulate the matrix according to opt_preview
+    mode = opt_preview.mode
+    npix = opt_preview.npixel        ; n pixel of the grid
+    pars = opt_preview
+    halfnpix = floor(npix/2)              ; half n pixel
+    tagnames = tag_names(opt_preview)
+    
+    ; tag NOIMFSECTOR, combine gridm and gridp into grid
+    if total(strmatch(tagnames, 'noIMFsector', /FOLD_CASE)) eq 1 then begin
+      grid = replicate(create_struct('n',0,'val',!values.f_nan),npix,npix,npix) 
+      valm = gridm.val
+      valp = gridp.val
+      idxm = where(~finite(valm))
+      idxp = where(~finite(valp))
+      valm[idxm] = 0
+      valp[idxp] = 0
+      grid.val = ((valm * gridm.n) + (valp * gridp.n)) / float(gridm.n + gridp.n)
+      grid.n = gridm.n + gridp.n
+      val = grid.val
+      val[where(~finite(val))] = 0
+      gridn = grid.n
+    endif
+    
     ; preparing the image
     valm = gridm.val
     valp = gridp.val
+    gridmn = gridm.n
+    gridpn = gridp.n
     idxm = where(~finite(valm))
     idxp = where(~finite(valp))
     valm[idxm] = 0
     valp[idxp] = 0
     
-    ; manipulate the matrix according to opt_preview
-    mode = opt_preview.mode
-    pars = opt_preview.pars
-
+    ; tag ALT, discard data below alt
+    Rmars = 3389D
+    if total(strmatch(tagnames, 'alt', /FOLD_CASE)) eq 1 then begin
+      for i1 = 0, 100 do for j1 = 0, 100 do for k1 = 0, 100 do $
+        if sqrt( (i1-halfnpix)^2 + (j1-halfnpix)^2 + (k1-halfnpix)^2 ) lt (Rmars+pars.alt)/Rmars/3 * halfnpix then begin
+          valm[i1,j1,k1] = 0
+          valp[i1,j1,k1] = 0
+          if total(strmatch(tagnames, 'noIMFsector', /FOLD_CASE)) eq 1 then val[i1,j1,k1] = 0
+        endif
+    endif
+    
+    
+    ;-----------------------DRAW PREVIEW---------------------;
+    
+    ; no IMF sector
+    if total(strmatch(tagnames, 'noIMFsector', /FOLD_CASE)) eq 1 then begin
+      if mode eq 'average' then begin
+        gridnyz = total(gridn[0:halfnpix,*,*],1)
+        gridnyz[where(gridnyz eq 0)] += 1
+        valyz = total(val[0:halfnpix,*,*] * gridn[0:halfnpix,*,*] ,1) / gridnyz
+        print,'Max/Min of val: ', max(valyz), min(valyz)
+        bx_drape_preview,valyz,minmaxval=pars.minmaxval, mse=mse, /noIMFsector
+        return
+      endif
+    endif else if mode eq 'slice' then begin
+      for i1 = 0, pars.nslice-1 do begin
+        gridnyz = TOTAL(gridn[FLOOR(i1*halfnpix/pars.nslice):CEIL((i1+1)*halfnpix/pars.nslice),*,*],1)
+        gridnyz[where(gridnyz) eq 0] += 1
+        
+        valyz = $
+          total(valm[floor(i1*halfnpix/pars.nslice):ceil((i1+1)*halfnpix/pars.nslice)] * $
+          gridn[floor(i1*halfnpix/pars.nslice):ceil((i1+1)*halfnpix/pars.nslice),*,*],1) / gridnyz
+        
+        bx_drape_preview, valyz, minmaxval=pars.minmaxval, mse=mse, /noIMFsector
+        return
+      endfor
+    endif
+    
+    ; have IMF sector
     if mode eq 'average' then begin
-      valmyz = total(valm[0:50,*,*],1)/50
-      valpyz = total(valp[0:50,*,*],1)/50
+      gridmnyz = total(gridmn[0:halfnpix,*,*],1)
+      gridpnyz = total(gridpn[0:halfnpix,*,*],1)
+      gridmnyz[where(gridmnyz eq 0)] += 1
+      gridpnyz[where(gridpnyz eq 0)] += 1
+      valmyz = total(valm[0:halfnpix,*,*] * gridmn[0:halfnpix,*,*], 1)/gridmnyz
+      valpyz = total(valp[0:halfnpix,*,*] * gridpn[0:halfnpix,*,*], 1)/gridpnyz
       print,'Max/Min of -Y IMF period: ', max(valmyz), min(valmyz)
       print,'Max/Min of +Y IMF period: ', max(valpyz), min(valpyz)
       bx_drape_preview, valmyz, valpyz, minmaxval=pars.minmaxval, mse=mse
+      return
     endif else if mode eq 'slice' then begin
-      for i1 = 0, n_elements(pars.nslice)-1 do begin
-        valmyz = total(valm[floor(i1*50./nslice):ceil((i1+1)*50./nslice),*,*],1)/50
-        valpyz = total(valp[floor(i1*50./nslice):ceil((i1+1)*50./nslice),*,*],1)/50
+      for i1 = 0, pars.nslice-1 do begin
+        gridmnyz = total(gridmn[floor(i1*halfnpix/pars.nslice):ceil((i1+1)*halfnpix/pars.nslice),*,*],1)
+        gridpnyz = total(gridpn[floor(i1*halfnpix/pars.nslice):ceil((i1+1)*halfnpix/pars.nslice),*,*],1)
+        gridmnyz[where(gridmnyz eq 0)] += 1
+        gridpnyz[where(gridpnyz eq 0)] += 1
+        
+        valmyz = $
+          total(valm[floor(i1*halfnpix/pars.nslice):ceil((i1+1)*halfnpix/pars.nslice),*,*] * $
+          gridmn[floor(i1*halfnpix/pars.nslice):ceil((i1+1)*halfnpix/pars.nslice),*,*],1) / gridmnyz
+        
+        valpyz = total(valp[floor(i1*halfnpix/pars.nslice):ceil((i1+1)*halfnpix/pars.nslice),*,*] * $
+          gridpn[floor(i1*halfnpix/pars.nslice):ceil((i1+1)*halfnpix/pars.nslice),*,*],1) / gridpnyz
+        
         bx_drape_preview, valmyz, valpyz, minmaxval=pars.minmaxval, mse=mse
       endfor
+      return
     endif
     
     
@@ -200,13 +284,17 @@ endif
 ;------------------------------end of preview----------------------------------;
 
 
+
+;---------------------------Start of Part 2------------------------------------;
 ; some constants
 Rmars = 3389D
+npix = 201
+halfnpix = floor(npix/2)
 if ~keyword_set(orbstart) then orbstart0 = 212 else orbstart0 = orbstart & undefine, orbstart
 if ~keyword_set(orbend) then orbend0 = 7640 else orbend0 = orbend & undefine, orbend
 
 
-; parallelization
+; PARALLELIZATION
 if keyword_set(parallel) then begin  
   
   ; Setting start/end point
@@ -219,11 +307,11 @@ if keyword_set(parallel) then begin
   serinum = paraconfig.serinum
   orbstep = (orbend0-orbstart0)/nchunk
   if serinum eq nchunk then begin
-    orbstart = orbstart0 + (serinum-1)*orbstep
-    orbend = orbend0
+    orbstart = floor(orbstart0 + (serinum-1)*orbstep)
+    orbend = ceil(orbend0)
   endif else begin
-    orbstart = orbstart0 + (serinum-1)*orbstep
-    orbend = orbstart0 + serinum*orbstep
+    orbstart = floor(orbstart0 + (serinum-1)*orbstep)
+    orbend = ceil(orbstart0 + serinum*orbstep)
   endelse  
   
   ; Setting the path
@@ -231,7 +319,8 @@ if keyword_set(parallel) then begin
   
   ; Setting the savname
   if nchunk lt 100 then begin
-      savname = strcompress(string(serinum),/remove_all)
+      savname = strcompress(string(long(serinum)),/remove_all) + $
+        '-npix' + strcompress(string(npix),/remove_all)
       if keyword_set(mse) then savname = savname + '-mse'
       savname = savname + '.sav'
   endif else begin
@@ -247,9 +336,9 @@ endelse
 
 ; Initialize the ratio grid 
 ; Grid for +By IMF
-gridp = replicate(create_struct('n',0,'val',!values.f_nan),101,101,101)  
+gridp = replicate(create_struct('n',0,'val',!values.f_nan),npix,npix,npix)  
 ; Grid for -By IMF
-gridm = replicate(create_struct('n',0,'val',!values.f_nan),101,101,101)  
+gridm = replicate(create_struct('n',0,'val',!values.f_nan),npix,npix,npix)  
 
 
 ; restore imf information
@@ -310,9 +399,9 @@ for orb = orbstart, orbend-1 do begin
  
     ; Add ratio to the grid
     ; +By IMF
-    indx = round(x/rmars/3.*50+50)
-    indy = round(y/rmars/3.*50+50)
-    indz = round(z/rmars/3.*50+50)
+    indx = round(x/rmars/3.*halfnpix+halfnpix)
+    indy = round(y/rmars/3.*halfnpix+halfnpix)
+    indz = round(z/rmars/3.*halfnpix+halfnpix)
     if imfinfo0.mag[1] gt 0 then begin
       ; Check whether the grid is filled
       if gridp[indx,indy,indz].n eq 0 then begin
@@ -338,6 +427,8 @@ for orb = orbstart, orbend-1 do begin
   end
 
 end
+
+;----------------------------end of main loop---------------------------;
 
 
 ; Save the result

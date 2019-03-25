@@ -16,18 +16,22 @@
 
 pro bx_drape_preview, valmyz, valpyz, $
   minmaxval=minmaxval, $
-  mse=mse
+  mse=mse, $
+  noIMFsector=noIMFsector, $
+  TITLE = TITLE, $
+  XTITLE = XTITLE, $
+  YTITLE = YTITLE
 
 compile_opt idl2
 
 if keyword_set(mse) then begin
-  xtitle = '$Y_{MSE}/Rm$'
-  YTITLE='$Z_{MSE}/Rm$'
-  TITLE = 'Bx Drape Pattern Preview (MSE)'
+  if ~keyword_set(XTITLE) then XTITLE = '$Y_{MSE}/Rm$'
+  if ~keyword_set(YTITLE) then YTITLE = '$Z_{MSE}/Rm$'
+  if ~keyword_set(TITLE) then TITLE = 'Bx Drape Pattern Preview (MSE)'
 endif else begin
-  XTITLE='$Y_{MSO}/Rm$'
-  YTITLE='$Z_{MSO}/Rm$'
-  TITLE = 'Bx Drape Pattern Preview (MSO)'
+  if ~keyword_set(XTITLE) then XTITLE = ' $Y_{MSO}/Rm$'
+  if ~keyword_set(YTITLE) then YTITLE = '$Z_{MSO}/Rm$'
+  if ~keyword_set(TITLE) then TITLE = 'Bx Drape Pattern Preview (MSO)'
 endelse
 
 ct = COLORTABLE(70, /REVERSE)
@@ -45,9 +49,18 @@ gm = IMAGE(valmyz, indgen(101,start=100,increment=-1), indgen(101), $
   TITLE='$-B_Y IMF$ ' + TITLE, $
   POSITION=[0.18,0.10,0.98,0.90])
 
+cirm = PLOT(cos(findgen(1000)/1000*2*!pi)*50./3+50, $
+  sin(findgen(1000)/1000*2*!pi)*50./3+50, $
+  /overplot)
+
 cbm = COLORBAR(TARGET=gm, ORIENTATION=1, $
   POSITION=[0.10,0.05,0.15,0.9], TICKDIR=1, $
-  TITLE='$B_X/B$ (m)')
+  TITLE='$B_X/B$ ')
+
+if keyword_set(noIMFsector) then begin
+  gm.title = TITLE
+  return
+endif
 
 gp = IMAGE(valpyz, indgen(101,start=100,increment=-1), indgen(101), $
   RGB_TABLE=ct, AXIS_STYLE=2, MARGIN=0.1, $
@@ -60,10 +73,14 @@ gp = IMAGE(valpyz, indgen(101,start=100,increment=-1), indgen(101), $
   YTICKNAME=['-3','-2','-1','0','1','2','3'], $
   TITLE='$+B_Y IMF$ ' + TITLE, $
   POSITION=[0.18,0.10,0.98,0.90])
+
+cirp = PLOT(cos(findgen(1000)/1000*2*!pi)*50./3+50, $
+  sin(findgen(1000)/1000*2*!pi)*50./3+50, $
+  /overplot)
   
 cbp = COLORBAR(TARGET=gp, ORIENTATION=1, $
   POSITION=[0.10,0.05,0.15,0.9], TICKDIR=1, $
-  TITLE='$B_X/B$ (m)')
+  TITLE='$B_X/B$   ')
 
 
 
