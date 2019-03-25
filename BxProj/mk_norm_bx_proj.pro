@@ -123,7 +123,7 @@ if keyword_set(noexecution) then begin
     ;-------------------------------------------------------------;
     
     delvar, opt_preview
-    pars0 = {pars, flag: 0, nslice: 3, alt: 1000D, npixel: 101}
+    pars0 = {pars, flag: 0, nslice: 3, alt: 1000D, npixel: 201}
     if ~keyword_set(opt_preview0) then begin
       opt_preview = {opt_preview, mode: 'average', minmaxval: 0.1, INHERITS pars0}
     endif else begin
@@ -208,7 +208,7 @@ if keyword_set(noexecution) then begin
     ; tag ALT, discard data below alt
     Rmars = 3389D
     if total(strmatch(tagnames, 'alt', /FOLD_CASE)) eq 1 then begin
-      for i1 = 0, 100 do for j1 = 0, 100 do for k1 = 0, 100 do $
+      for i1 = 0, npix-1 do for j1 = 0, npix-1 do for k1 = 0, npix-1 do $
         if sqrt( (i1-halfnpix)^2 + (j1-halfnpix)^2 + (k1-halfnpix)^2 ) lt (Rmars+pars.alt)/Rmars/3 * halfnpix then begin
           valm[i1,j1,k1] = 0
           valp[i1,j1,k1] = 0
@@ -226,7 +226,7 @@ if keyword_set(noexecution) then begin
         gridnyz[where(gridnyz eq 0)] += 1
         valyz = total(val[0:halfnpix,*,*] * gridn[0:halfnpix,*,*] ,1) / gridnyz
         print,'Max/Min of val: ', max(valyz), min(valyz)
-        bx_drape_preview,valyz,minmaxval=pars.minmaxval, mse=mse, /noIMFsector
+        bx_drape_preview,opt_preview, valyz,minmaxval=pars.minmaxval, mse=mse, /noIMFsector
         return
       endif
     endif else if mode eq 'slice' then begin
@@ -238,7 +238,7 @@ if keyword_set(noexecution) then begin
           total(valm[floor(i1*halfnpix/pars.nslice):ceil((i1+1)*halfnpix/pars.nslice)] * $
           gridn[floor(i1*halfnpix/pars.nslice):ceil((i1+1)*halfnpix/pars.nslice),*,*],1) / gridnyz
         
-        bx_drape_preview, valyz, minmaxval=pars.minmaxval, mse=mse, /noIMFsector
+        bx_drape_preview, opt_preview, valyz, minmaxval=pars.minmaxval, mse=mse, /noIMFsector
         return
       endfor
     endif
@@ -253,7 +253,7 @@ if keyword_set(noexecution) then begin
       valpyz = total(valp[0:halfnpix,*,*] * gridpn[0:halfnpix,*,*], 1)/gridpnyz
       print,'Max/Min of -Y IMF period: ', max(valmyz), min(valmyz)
       print,'Max/Min of +Y IMF period: ', max(valpyz), min(valpyz)
-      bx_drape_preview, valmyz, valpyz, minmaxval=pars.minmaxval, mse=mse
+      bx_drape_preview, opt_preview, valmyz, valpyz, minmaxval=pars.minmaxval, mse=mse
       return
     endif else if mode eq 'slice' then begin
       for i1 = 0, pars.nslice-1 do begin
@@ -269,7 +269,7 @@ if keyword_set(noexecution) then begin
         valpyz = total(valp[floor(i1*halfnpix/pars.nslice):ceil((i1+1)*halfnpix/pars.nslice),*,*] * $
           gridpn[floor(i1*halfnpix/pars.nslice):ceil((i1+1)*halfnpix/pars.nslice),*,*],1) / gridpnyz
         
-        bx_drape_preview, valmyz, valpyz, minmaxval=pars.minmaxval, mse=mse
+        bx_drape_preview, opt_preview, valmyz, valpyz, minmaxval=pars.minmaxval, mse=mse
       endfor
       return
     endif

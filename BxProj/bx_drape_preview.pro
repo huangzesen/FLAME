@@ -14,7 +14,7 @@
 ;
 ;-
 
-pro bx_drape_preview, valmyz, valpyz, $
+pro bx_drape_preview, opt_preview, valmyz, valpyz, $
   minmaxval=minmaxval, $
   mse=mse, $
   noIMFsector=noIMFsector, $
@@ -34,23 +34,26 @@ endif else begin
   if ~keyword_set(TITLE) then TITLE = 'Bx Drape Pattern Preview (MSO)'
 endelse
 
+npix = opt_preview.npixel
+halfnpix = floor(npix/2)
+
 ct = COLORTABLE(70, /REVERSE)
 if ~keyword_set(minmaxval) then minmaxval = 0.15
 
-gm = IMAGE(valmyz, indgen(101,start=100,increment=-1), indgen(101), $
+gm = IMAGE(valmyz, indgen(npix,start=(npix-1),increment=-1), indgen(npix), $
   RGB_TABLE=ct, AXIS_STYLE=2, MARGIN=0.1, $
   MIN_VALUE = -minmaxval, MAX_VALUE = minmaxval, $
   XTITLE=xtitle, $
   YTITLE=ytitle, $
-  XTICKVALUES=ceil(findgen(7)*100/6), $
-  YTICKVALUES=ceil(findgen(7)*100/6), $
+  XTICKVALUES=ceil(findgen(7)*(npix-1)/6), $
+  YTICKVALUES=ceil(findgen(7)*(npix-1)/6), $
   XTICKNAME=['3','2','1','0','-1','-2','-3'], $
   YTICKNAME=['-3','-2','-1','0','1','2','3'], $
   TITLE='$-B_Y IMF$ ' + TITLE, $
   POSITION=[0.18,0.10,0.98,0.90])
 
-cirm = PLOT(cos(findgen(1000)/1000*2*!pi)*50./3+50, $
-  sin(findgen(1000)/1000*2*!pi)*50./3+50, $
+cirm = PLOT(cos(findgen(1000)/1000*2*!pi)*halfnpix/3+halfnpix, $
+  sin(findgen(1000)/1000*2*!pi)*halfnpix/3+halfnpix, $
   /overplot)
 
 cbm = COLORBAR(TARGET=gm, ORIENTATION=1, $
@@ -62,20 +65,20 @@ if keyword_set(noIMFsector) then begin
   return
 endif
 
-gp = IMAGE(valpyz, indgen(101,start=100,increment=-1), indgen(101), $
+gp = IMAGE(valpyz, indgen(npix,start=(npix-1),increment=-1), indgen(npix), $
   RGB_TABLE=ct, AXIS_STYLE=2, MARGIN=0.1, $
   MIN_VALUE=-minmaxval, MAX_VALUE=minmaxval, $
   XTITLE=xtitle, $
   YTITLE=ytitle, $
-  XTICKVALUES=ceil(findgen(7)*100/6), $
-  YTICKVALUES=ceil(findgen(7)*100/6), $
+  XTICKVALUES=ceil(findgen(7)*(npix-1)/6), $
+  YTICKVALUES=ceil(findgen(7)*(npix-1)/6), $
   XTICKNAME=['3','2','1','0','-1','-2','-3'], $
   YTICKNAME=['-3','-2','-1','0','1','2','3'], $
   TITLE='$+B_Y IMF$ ' + TITLE, $
   POSITION=[0.18,0.10,0.98,0.90])
 
-cirp = PLOT(cos(findgen(1000)/1000*2*!pi)*50./3+50, $
-  sin(findgen(1000)/1000*2*!pi)*50./3+50, $
+cirp = PLOT(cos(findgen(1000)/1000*2*!pi)*halfnpix/3+halfnpix, $
+  sin(findgen(1000)/1000*2*!pi)*halfnpix/3+halfnpix, $
   /overplot)
   
 cbp = COLORBAR(TARGET=gp, ORIENTATION=1, $
