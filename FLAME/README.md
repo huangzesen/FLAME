@@ -24,3 +24,7 @@ For example:
  ### FLM_INFO_KEYGEN
 
  Generate key and assign it to an flux rope candidate.
+
+ ### FLM_INFO_RESTORE
+
+ Restore infotable from disk.
