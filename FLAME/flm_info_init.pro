@@ -6,21 +6,30 @@
 ; contains:
 ;   FRPAR: flux rope parameter from HARA
 ;   KEY: flux rope ID
-;   FLAG1, FLAG2, FLAG3... : flags reserved for later use
-;   TYPE: flux rope type (shadow/lobe)
+; The resultant variable will be named 'INFOTABLE' and will be saved to:
+;   infopath + datestr + infoname + infover +'.sav'
 ;
 ;USAGE:	
 ;
 ;INPUTS:	
 ;
 ;KEYWORDS:	
-;
+; 
+; FRPARPATH, INFOPATH, INFOVER, INFONAME : return various paths and file names.
+; 
+; NOEXECUTION: do nothing and return
+; 
 ;CREATED BY: 	 huangzs on Mar 25, 2019
 ;UPDATES:	
 ;
 ;-
 
-pro flm_info_init
+pro flm_info_init, $
+  frparpath = frparpath, $
+  infopath = infopath, $
+  infover = infover, $
+  infoname = infoname, $
+  noexecution = noexecution
 
 compile_opt idl2
 
@@ -28,6 +37,8 @@ frparpath = '/home/hara/work/analysis/vex/flux_rope/shadow/'
 infopath = '/home/huangzs/work/thesis/analysis/vexinfo/infotable/'
 infover = 'v0.0'
 infoname = 'vex_info_'
+
+if keyword_set(noexecution) then return
 
 ; find the sav files
 files = file_search(frparpath,'*.sav')
