@@ -2,13 +2,26 @@
 ;Procedure:	flm_info_addtag
 ;
 ;PURPOSE:	
-; This procedure add tag to info structure array (infotable).
+; This procedure add tag to info structure array (infotable) .
+; Use keyword REMTAG to remove tag.
 ; 
 ;USAGE:	
+; 
+; flm_info_addtag, infotable, tagname, [vartype = vartype], [defval = defval]
+; 
+; flm_info_addtag, infotable, tagname, /remtag
 ;
 ;INPUTS:	
+; INFOTABLE: flux rope information structure array
+; TAGNAME: tag name of the variable you want to add
 ;
 ;KEYWORDS:	
+; VARTYPE: (Optional) type of the new tag, default is 'FLOAT', plz check the
+;   code for available data type
+; DEFVAL: (Optional) default value of the tag. If not set, the program will
+;   assign the tag either NAN or 0, depends on the data type.
+; REMTAG: (Optional) remove tag named TAGNAME instead of adding the tag
+; ADDTAG: (Default) add the tag
 ;
 ;CREATED BY: 	 huangzs on Mar 26, 2019
 ;UPDATES:	
@@ -94,6 +107,6 @@ for i1 = 0, n_elements(infos)-1 do begin
 
 endfor
 
-return,infosnew
+return, infosnew
 
 end

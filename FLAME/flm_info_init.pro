@@ -10,6 +10,8 @@
 ;   infopath + datestr + infoname + infover +'.sav'
 ;
 ;USAGE:	
+; flm_info_init, [/noexe], [frparpath = frparpath], $
+;   [infopath = infopath], [infoname = infoname], [infover = infover]
 ;
 ;INPUTS:	
 ;
@@ -18,6 +20,8 @@
 ; FRPARPATH, INFOPATH, INFOVER, INFONAME : return various paths and file names.
 ; 
 ; NOEXECUTION: do nothing and return
+; 
+; NODATESTR: discard date string in the save path
 ; 
 ;CREATED BY: 	 huangzs on Mar 25, 2019
 ;UPDATES:	
@@ -62,6 +66,30 @@ endfor
 timestr = time_string(systime(/seconds))
 datestr = timestr.substring(0,10)
 if (file_test(infopath+datestr, /directory) ne 1) then file_mkdir, infopath+datestr
-save, infotable, filename = infopath + datestr + infoname + infover + '.sav'
+
+; check file existence
+if ~keyword_set(nodatestr) then $
+  savname = infopath + datestr + infoname + infover + '.sav' else $
+  savname = infopath + infoname + infover + '.sav'
+
+if (file_test(savname)) then begin
+  print, 'sav file already existed!'
+  print, savname
+  print, 'Overwrite?'
+  strflag = '' 
+  read, 'Enter YES to overwrite: ', strflag
+  if strcmp(strflag, 'YES') eq 1 then begin
+    print, 'Overwriting...'
+    save, infotable, filename = savname
+    return
+  endif else begin
+    print, 'No overwrite, aborting...'
+    return
+  endelse
+endif else begin
+  print, 'Writing the result...'
+  save, infotable, filename = savname
+endelse
+
 
 end

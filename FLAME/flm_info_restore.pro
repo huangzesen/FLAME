@@ -18,6 +18,8 @@
 ; INFOPATH, INFONAME, INFOVER: keyword to locate the IDL sav files.
 ; 
 ; VERBOSE: show more information
+; 
+; NOEXECUTION: do nothing
 ;
 ;CREATED BY: 	 huangzs on Mar 26, 2019
 ;UPDATES:	
@@ -28,6 +30,7 @@ pro flm_info_restore, infotable, $
   infopath = infopath, $
   infoname = infoname, $
   infover = infover, $
+  noexecution = noexecution, $
   verbose = verbose
 
 
@@ -49,6 +52,11 @@ undefine, infotable
 
 ; search sav files
 files = file_search(infopath,'*.sav')
+for i1 = 0, n_elements(files)-1 do begin
+  print, strcompress(i1), files[i1]
+endfor
+
+; restore sav files
 idx = strmatch(files,infoname+infover)
 if idx[0] eq -1 then begin
   dprint, 'No such sav files.'
