@@ -81,7 +81,11 @@ pro mk_norm_bx_proj, $
   preview=preview, $
   opt_preview0=opt_preview0, $
   savindex=savindex, $
-  noexecution=noexecution
+  noexecution=noexecution, $
+  specplot=specplot, $
+  searchpath=searchpath
+;  gridm=gridm, $
+;  gridp=gridp
 
 compile_opt idl2
 
@@ -89,10 +93,10 @@ compile_opt idl2
 ; load imf information and record the Bx ratio observation
 ;
 
+savpath0 = '/home/huangzs/work/thesis/analysis/norm_bx_proj/'
 if ~keyword_set(savpath) then begin
   timestr = time_string(systime(/seconds))
   datestr = timestr.substring(0,9) + '/'
-  savpath0 = '/home/huangzs/work/thesis/analysis/norm_bx_proj/'
   savpath = '/home/huangzs/work/thesis/analysis/norm_bx_proj/'+datestr
 endif
   
@@ -102,7 +106,8 @@ if ~keyword_set(savname) then $
 
 ;-----------------------------------Preview------------------------------------;
 if keyword_set(noexecution) then begin
-  savfiles = file_search(savpath0,'*.sav')
+  if ~keyword_set(searchpath) then searchpath = savpath0
+  savfiles = file_search(searchpath,'*.sav')
   print,'Available sav files:'
   for i1 = 0, n_elements(savfiles)-1 do $
     print,strcompress(string(i1)),' ',savfiles[i1]
@@ -113,7 +118,7 @@ if keyword_set(noexecution) then begin
     ; mode:
     ;   'average' : average Bx in x direction
     ;   'slice' : slice plot
-    ; pars:
+    ; opt:
     ;   'flag' : useless
     ;   'nslice' : (for mode 'slice') number of slices
     ;   'minmaxval' : min/max value for function image
@@ -123,13 +128,30 @@ if keyword_set(noexecution) then begin
     ;-------------------------------------------------------------;
     
     delvar, opt_preview
-    pars0 = {pars, flag: 0, nslice: 3, alt: 1000D, npixel: 201}
+    opt0 = {flag: 0, nslice: 3, alt: 1000D, npixel: 201}
     if ~keyword_set(opt_preview0) then begin
-      opt_preview = {opt_preview, mode: 'average', minmaxval: 0.1, INHERITS pars0}
+      opt_preview = create_struct(mode,'average', 'minmaxval', 1, opt0)
     endif else begin
-      opt_preview = create_struct(name='opt_preview', opt_preview0, pars0)
+      tags0 = tag_names(opt0)
+      tags1 = tag_names(opt_preview0)
+      newtags0 = []
+      for i1 = 0, n_elements(tags0)-1 do begin
+        flags = strmatch(tags1, tags0[i1])
+        if total(flags) eq 0 then begin
+          newtags0 = [newtags0, tags0[i1]]
+        endif
+      endfor
+      extract_tags, opt0new, opt0, tags = newtags0
+      opt_preview = create_struct(opt_preview0, opt0new)
     endelse
-    
+
+
+    ; extract parameters from OPT_PREVIEW
+    mode = opt_preview.mode
+    npix = opt_preview.npixel         ; n pixel of the grid
+    opt = opt_preview                 ; abbreviation
+    halfnpix = floor(npix/2)          ; half n pixel
+    tagnames = tag_names(opt_preview)
 
     ; combine sav files
     if ~keyword_set(savindex) then begin
@@ -143,24 +165,30 @@ if keyword_set(noexecution) then begin
         if i1 eq 0 then begin
           gridm0 = gridm
           gridp0 = gridp
-          valm0 = gridm0.val
-          valp0 = gridp0.val
-          idxm0 = where(~finite(valm0))
-          idxp0 = where(~finite(valp0))
-          valm0[idxm0] = 0
-          valp0[idxp0] = 0
-          gridm0.val = valm0
-          gridp0.val = valp0
         endif else begin
+          ; -By IMF
+          fm0 = finite(gridm0.val)
+          fm1 = finite(gridm.val)
+          idxm0 = where((fm0+fm1 gt 0) * (fm0 eq 0) ne 0)
+          idxm1 = where((fm0+fm1 gt 0) * (fm1 eq 0) ne 0)
+          valm0 = gridm0.val
           valm = gridm.val
-          valp = gridp.val
-          idxm = where(~finite(valm))
-          idxp = where(~finite(valp))
-          valm[idxm] = 0
-          valp[idxp] = 0
+          valm0[idxm0] = 0
+          valm[idxm1] = 0
+          gridm0.val = valm0
           gridm.val = valm
+          ; +By IMF
+          fp0 = finite(gridp0.val)
+          fp1 = finite(gridp.val)
+          idxp0 = where((fp0+fp1 gt 0) * (fp0 eq 0) ne 0)
+          idxp1 = where((fp0+fp1 gt 0) * (fp1 eq 0) ne 0)
+          valp0 = gridp0.val
+          valp = gridp.val
+          valp0[idxp0] = 0
+          valp[idxp1] = 0
+          gridp0.val = valp0
           gridp.val = valp
-          ; weighted addition
+          ; Weighted Addition
           gridm0.val = ((gridm0.val * gridm0.n) + (gridm.val * gridm.n)) / float(gridm0.n + gridm.n)
           gridp0.val = ((gridp0.val * gridp0.n) + (gridp.val * gridp.n)) / float(gridp0.n + gridp.n)
           gridm0.n = gridm0.n + gridm.n
@@ -170,14 +198,18 @@ if keyword_set(noexecution) then begin
       gridm = gridm0
       gridp = gridp0
     endif
+
+    ; Save the result to savpath0
+    if keyword_set(savindex) and n_elements(savindex) gt 1 then begin
+      if ~file_test(savpath0+'/combine/') then file_mkdir, savpath0+'/combine/'
+      fullname = savfiles[savindex[0]]
+      pos1 = fullname.lastindexof('npix')
+      if pos1 eq -1 then pos1 = fullname.lastindexof('/')
+      savname0 = fullname.substring(pos1, -1)
+      save, gridm, gridp, filename = savpath0 + '/combine/' + savname0
+    endif
     
-        
-    ; manipulate the matrix according to opt_preview
-    mode = opt_preview.mode
-    npix = opt_preview.npixel        ; n pixel of the grid
-    pars = opt_preview
-    halfnpix = floor(npix/2)              ; half n pixel
-    tagnames = tag_names(opt_preview)
+    
     
     ; tag NOIMFSECTOR, combine gridm and gridp into grid
     if total(strmatch(tagnames, 'noIMFsector', /FOLD_CASE)) eq 1 then begin
@@ -209,7 +241,7 @@ if keyword_set(noexecution) then begin
     Rmars = 3389D
     if total(strmatch(tagnames, 'alt', /FOLD_CASE)) eq 1 then begin
       for i1 = 0, npix-1 do for j1 = 0, npix-1 do for k1 = 0, npix-1 do $
-        if sqrt( (i1-halfnpix)^2 + (j1-halfnpix)^2 + (k1-halfnpix)^2 ) lt (Rmars+pars.alt)/Rmars/3 * halfnpix then begin
+        if sqrt( (i1-halfnpix)^2 + (j1-halfnpix)^2 + (k1-halfnpix)^2 ) lt (Rmars+opt.alt)/Rmars/3 * halfnpix then begin
           valm[i1,j1,k1] = 0
           valp[i1,j1,k1] = 0
           if total(strmatch(tagnames, 'noIMFsector', /FOLD_CASE)) eq 1 then val[i1,j1,k1] = 0
@@ -226,50 +258,49 @@ if keyword_set(noexecution) then begin
         gridnyz[where(gridnyz eq 0)] += 1
         valyz = total(val[0:halfnpix,*,*] * gridn[0:halfnpix,*,*] ,1) / gridnyz
         print,'Max/Min of val: ', max(valyz), min(valyz)
-        bx_drape_preview,opt_preview, valyz,minmaxval=pars.minmaxval, mse=mse, /noIMFsector
+        bx_drape_preview,opt_preview, valyz,minmaxval=opt.minmaxval, mse=mse, /noIMFsector
         return
       endif
     endif else if mode eq 'slice' then begin
-      for i1 = 0, pars.nslice-1 do begin
-        gridnyz = TOTAL(gridn[FLOOR(i1*halfnpix/pars.nslice):CEIL((i1+1)*halfnpix/pars.nslice),*,*],1)
+      for i1 = 0, opt.nslice-1 do begin
+        gridnyz = TOTAL(gridn[FLOOR(i1*halfnpix/opt.nslice):CEIL((i1+1)*halfnpix/opt.nslice),*,*],1)
         gridnyz[where(gridnyz) eq 0] += 1
         
         valyz = $
-          total(valm[floor(i1*halfnpix/pars.nslice):ceil((i1+1)*halfnpix/pars.nslice)] * $
-          gridn[floor(i1*halfnpix/pars.nslice):ceil((i1+1)*halfnpix/pars.nslice),*,*],1) / gridnyz
+          total(valm[floor(i1*halfnpix/opt.nslice):ceil((i1+1)*halfnpix/opt.nslice)] * $
+          gridn[floor(i1*halfnpix/opt.nslice):ceil((i1+1)*halfnpix/opt.nslice),*,*],1) / gridnyz
         
-        bx_drape_preview, opt_preview, valyz, minmaxval=pars.minmaxval, mse=mse, /noIMFsector
+        bx_drape_preview, opt_preview, valyz, minmaxval=opt.minmaxval, mse=mse, /noIMFsector
         return
       endfor
     endif
     
     ; have IMF sector
     if mode eq 'average' then begin
-      gridmnyz = total(gridmn[0:halfnpix,*,*],1)
-      gridpnyz = total(gridpn[0:halfnpix,*,*],1)
-      gridmnyz[where(gridmnyz eq 0)] += 1
-      gridpnyz[where(gridpnyz eq 0)] += 1
-      valmyz = total(valm[0:halfnpix,*,*] * gridmn[0:halfnpix,*,*], 1)/gridmnyz
-      valpyz = total(valp[0:halfnpix,*,*] * gridpn[0:halfnpix,*,*], 1)/gridpnyz
-      print,'Max/Min of -Y IMF period: ', max(valmyz), min(valmyz)
-      print,'Max/Min of +Y IMF period: ', max(valpyz), min(valpyz)
-      bx_drape_preview, opt_preview, valmyz, valpyz, minmaxval=pars.minmaxval, mse=mse
+      ;print,'Max/Min of -Y IMF period: ', max(valmyz), min(valmyz)
+      ;print,'Max/Min of +Y IMF period: ', max(valpyz), min(valpyz)
+      wi,0, xs=1000,ys=900
+      wset,0
+      print, 'First Figure...'
+      bx_drape_specplot, gridm.val, gridm.n, limits = {isotropic:1, title:'-By IMF'}
+      stop
+      bx_drape_specplot, gridp.val, gridp.n, limits = {isotropic:1, title:'+By IMF'}
       return
     endif else if mode eq 'slice' then begin
-      for i1 = 0, pars.nslice-1 do begin
-        gridmnyz = total(gridmn[floor(i1*halfnpix/pars.nslice):ceil((i1+1)*halfnpix/pars.nslice),*,*],1)
-        gridpnyz = total(gridpn[floor(i1*halfnpix/pars.nslice):ceil((i1+1)*halfnpix/pars.nslice),*,*],1)
+      for i1 = 0, opt.nslice-1 do begin
+        gridmnyz = total(gridmn[floor(i1*halfnpix/opt.nslice):ceil((i1+1)*halfnpix/opt.nslice),*,*],1)
+        gridpnyz = total(gridpn[floor(i1*halfnpix/opt.nslice):ceil((i1+1)*halfnpix/opt.nslice),*,*],1)
         gridmnyz[where(gridmnyz eq 0)] += 1
         gridpnyz[where(gridpnyz eq 0)] += 1
         
         valmyz = $
-          total(valm[floor(i1*halfnpix/pars.nslice):ceil((i1+1)*halfnpix/pars.nslice),*,*] * $
-          gridmn[floor(i1*halfnpix/pars.nslice):ceil((i1+1)*halfnpix/pars.nslice),*,*],1) / gridmnyz
+          total(valm[floor(i1*halfnpix/opt.nslice):ceil((i1+1)*halfnpix/opt.nslice),*,*] * $
+          gridmn[floor(i1*halfnpix/opt.nslice):ceil((i1+1)*halfnpix/opt.nslice),*,*],1) / gridmnyz
         
-        valpyz = total(valp[floor(i1*halfnpix/pars.nslice):ceil((i1+1)*halfnpix/pars.nslice),*,*] * $
-          gridpn[floor(i1*halfnpix/pars.nslice):ceil((i1+1)*halfnpix/pars.nslice),*,*],1) / gridpnyz
+        valpyz = total(valp[floor(i1*halfnpix/opt.nslice):ceil((i1+1)*halfnpix/opt.nslice),*,*] * $
+          gridpn[floor(i1*halfnpix/opt.nslice):ceil((i1+1)*halfnpix/opt.nslice),*,*],1) / gridpnyz
         
-        bx_drape_preview, opt_preview, valmyz, valpyz, minmaxval=pars.minmaxval, mse=mse
+        bx_drape_preview, opt_preview, valmyz, valpyz, minmaxval=opt.minmaxval, mse=mse
       endfor
       return
     endif
@@ -320,7 +351,7 @@ if keyword_set(parallel) then begin
   ; Setting the savname
   if nchunk lt 100 then begin
       savname = strcompress(string(long(serinum)),/remove_all) + $
-        '-npix' + strcompress(string(npix),/remove_all)
+        '-npix' + strcompress(string(npix),/remove_all); + '-all'  ; all means I made used of the data not only in magtail...
       if keyword_set(mse) then savname = savname + '-mse'
       savname = savname + '.sav'
   endif else begin
@@ -375,9 +406,10 @@ for orb = orbstart, orbend-1 do begin
 
   ; loop through the ephemeris data
   for i1 = 0, n_elements(eph)-1 do begin
-    ind = where(abs(tmagtail-eph[i1].time) lt 6)
+    ind = where(abs(tmagtail-eph[i1].time) lt 6)   ; Comment this three line to disable only-magtail setting
     if ind[0] eq -1 then continue
     time = tmagtail[ind[0]]
+    time = eph[i1].time
     x = eph[i1].x_ss
     y = eph[i1].y_ss
     z = eph[i1].z_ss

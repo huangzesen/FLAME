@@ -67,17 +67,22 @@ if ~keyword_set(csv) then begin
 
   ; search sav files
   files = file_search(infopath,'*.sav')
+  print, ''
+  print, 'INFOPATH: ', infopath
+  print, 'Available IDL sav files in infopath:'
   for i1 = 0, n_elements(files)-1 do begin
     print, strcompress(i1), files[i1]
   endfor
 
   ; restore sav files
   idx = strmatch(files,'*'+infoname+infover+'*')
-  if idx[0] eq -1 then begin
-    dprint, 'No such sav files.'
+  if total(idx) eq 0 then begin
+    dprint, verbose=verbose, 'No such sav files.'
     return
-  endif else if total(idx) ne 1 then begin
-    dprint, 'Mutiple match: '
+  endif else if total(idx) gt 1 then begin
+    print, ''
+    dprint, verbose = verbose, 'INFONAME+INFOVER: ', infoname+infover
+    dprint, verbose = verbose, 'Mutiple match: '
     ind = where(idx ne 0)
     for i1 = 0, n_elements(ind)-1 do $
       print, strcompress(string(ind[i1])), files[ind[i1]]
@@ -130,6 +135,7 @@ endif else if keyword_set(csv) then begin
       dprint, 'Wrong Input!'
       read, 'Select: ', ind
     endwhile
+    csvname = files[ind]
     csvdata = read_csv(csvname, header = header)
   endelse
 
