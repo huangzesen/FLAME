@@ -14,8 +14,8 @@ bx_drape_specplot, /noexe, limits = limits
 ; -By IMF MSO
 limits = {xtitle: 'Y!LMSO!N(R!LM!N)', ytitle: 'Z!LMSO!N(R!LM!N)', title: '-B!LY!N IMF' }
 bx_drape_specplot, gridm.val, gridm.n, limits = limits
-makepng,'/home/huangzs/work/thesis/analysis/norm_bx_proj/figures/-By-IMF-MSO',/mkdir
 stop
+makepng,'/home/huangzs/work/thesis/analysis/norm_bx_proj/figures/-By-IMF-MSO',/mkdir
 
 ; +By IMF MSO
 limits = {xtitle: 'Y!LMSO!N(R!LM!N)', ytitle: 'Z!LMSO!N(R!LM!N)', title: '+B!LY!N IMF' }

@@ -83,7 +83,8 @@ pro mk_norm_bx_proj, $
   savindex=savindex, $
   noexecution=noexecution, $
   specplot=specplot, $
-  searchpath=searchpath
+  searchpath=searchpath, $
+  combine = combine
 ;  gridm=gridm, $
 ;  gridp=gridp
 
@@ -107,6 +108,7 @@ if ~keyword_set(savname) then $
 ;-----------------------------------Preview------------------------------------;
 if keyword_set(noexecution) then begin
   if ~keyword_set(searchpath) then searchpath = savpath0
+  if keyword_set(combine) then searchpath = savpath0 + '/combine/'
   savfiles = file_search(searchpath,'*.sav')
   print,'Available sav files:'
   for i1 = 0, n_elements(savfiles)-1 do $
@@ -210,41 +212,30 @@ if keyword_set(noexecution) then begin
     endif
     
     
-    
-    ; tag NOIMFSECTOR, combine gridm and gridp into grid
-    if total(strmatch(tagnames, 'noIMFsector', /FOLD_CASE)) eq 1 then begin
-      grid = replicate(create_struct('n',0,'val',!values.f_nan),npix,npix,npix) 
-      valm = gridm.val
-      valp = gridp.val
-      idxm = where(~finite(valm))
-      idxp = where(~finite(valp))
-      valm[idxm] = 0
-      valp[idxp] = 0
-      grid.val = ((valm * gridm.n) + (valp * gridp.n)) / float(gridm.n + gridp.n)
-      grid.n = gridm.n + gridp.n
-      val = grid.val
-      val[where(~finite(val))] = 0
-      gridn = grid.n
-    endif
-    
-    ; preparing the image
+    ; prepare the image
     valm = gridm.val
     valp = gridp.val
     gridmn = gridm.n
     gridpn = gridp.n
-    idxm = where(~finite(valm))
-    idxp = where(~finite(valp))
-    valm[idxm] = 0
-    valp[idxp] = 0
+    if total(strmatch(tagnames, 'noIMFsector', /FOLD_CASE)) eq 1 then begin
+      fm = finite(valm)
+      fp = finite(valp)
+      idxm = where((fm+fp) gt 0 and fm eq 0)
+      idxp = where((fm+fp) gt 0 and fp eq 0)
+      valm[idxm] = 0
+      valp[idxp] = 0
+      val = (valm*gridm.n+valp*gridp.n)/(gridm.n+gridp.n)
+      gridn = gridm.n+gridp.n
+    endif
     
     ; tag ALT, discard data below alt
     Rmars = 3389D
     if total(strmatch(tagnames, 'alt', /FOLD_CASE)) eq 1 then begin
       for i1 = 0, npix-1 do for j1 = 0, npix-1 do for k1 = 0, npix-1 do $
         if sqrt( (i1-halfnpix)^2 + (j1-halfnpix)^2 + (k1-halfnpix)^2 ) lt (Rmars+opt.alt)/Rmars/3 * halfnpix then begin
-          valm[i1,j1,k1] = 0
-          valp[i1,j1,k1] = 0
-          if total(strmatch(tagnames, 'noIMFsector', /FOLD_CASE)) eq 1 then val[i1,j1,k1] = 0
+          valm[i1,j1,k1] = !values.f_nan
+          valp[i1,j1,k1] = !values.f_nan
+          if total(strmatch(tagnames, 'noIMFsector', /FOLD_CASE)) eq 1 then val[i1,j1,k1] = !values.f_nan
         endif
     endif
     
@@ -254,25 +245,18 @@ if keyword_set(noexecution) then begin
     ; no IMF sector
     if total(strmatch(tagnames, 'noIMFsector', /FOLD_CASE)) eq 1 then begin
       if mode eq 'average' then begin
-        gridnyz = total(gridn[0:halfnpix,*,*],1)
-        gridnyz[where(gridnyz eq 0)] += 1
-        valyz = total(val[0:halfnpix,*,*] * gridn[0:halfnpix,*,*] ,1) / gridnyz
-        print,'Max/Min of val: ', max(valyz), min(valyz)
-        bx_drape_preview,opt_preview, valyz,minmaxval=opt.minmaxval, mse=mse, /noIMFsector
+        print,'Max/Min of val: ', max(valyz,/nan), min(valyz,/nan)
+        bx_drape_specplot, val, gridn, limits = opt
+        return
+      endif else if mode eq 'slice' then begin
+        for i1 = 0, opt.nslice-1 do begin
+          n1 = FLOOR(i1*halfnpix/opt.nslice) & n2 = CEIL((i1+1)*halfnpix/opt.nslice)
+          valyz = TOTAL(valm[n1:n2,*,*] * gridn[n1:n2,*,*],1,/nan)/TOTAL(gridn[n1:n2,*,*],1,/nan)
+          wi,0,xs=1000,ys=900 & wset,0
+          bx_drape_specplot, valyz, limits = opt
+        endfor
         return
       endif
-    endif else if mode eq 'slice' then begin
-      for i1 = 0, opt.nslice-1 do begin
-        gridnyz = TOTAL(gridn[FLOOR(i1*halfnpix/opt.nslice):CEIL((i1+1)*halfnpix/opt.nslice),*,*],1)
-        gridnyz[where(gridnyz) eq 0] += 1
-        
-        valyz = $
-          total(valm[floor(i1*halfnpix/opt.nslice):ceil((i1+1)*halfnpix/opt.nslice)] * $
-          gridn[floor(i1*halfnpix/opt.nslice):ceil((i1+1)*halfnpix/opt.nslice),*,*],1) / gridnyz
-        
-        bx_drape_preview, opt_preview, valyz, minmaxval=opt.minmaxval, mse=mse, /noIMFsector
-        return
-      endfor
     endif
     
     ; have IMF sector
@@ -288,19 +272,22 @@ if keyword_set(noexecution) then begin
       return
     endif else if mode eq 'slice' then begin
       for i1 = 0, opt.nslice-1 do begin
-        gridmnyz = total(gridmn[floor(i1*halfnpix/opt.nslice):ceil((i1+1)*halfnpix/opt.nslice),*,*],1)
-        gridpnyz = total(gridpn[floor(i1*halfnpix/opt.nslice):ceil((i1+1)*halfnpix/opt.nslice),*,*],1)
-        gridmnyz[where(gridmnyz eq 0)] += 1
-        gridpnyz[where(gridpnyz eq 0)] += 1
-        
-        valmyz = $
-          total(valm[floor(i1*halfnpix/opt.nslice):ceil((i1+1)*halfnpix/opt.nslice),*,*] * $
-          gridmn[floor(i1*halfnpix/opt.nslice):ceil((i1+1)*halfnpix/opt.nslice),*,*],1) / gridmnyz
-        
-        valpyz = total(valp[floor(i1*halfnpix/opt.nslice):ceil((i1+1)*halfnpix/opt.nslice),*,*] * $
-          gridpn[floor(i1*halfnpix/opt.nslice):ceil((i1+1)*halfnpix/opt.nslice),*,*],1) / gridpnyz
-        
-        bx_drape_preview, opt_preview, valmyz, valpyz, minmaxval=opt.minmaxval, mse=mse
+        n1 = FLOOR(i1*halfnpix/opt.nslice) & n2 = CEIL((i1+1)*halfnpix/opt.nslice)
+        valmyz = total(valm[n1:n2,*,*] * gridmn[n1:n2,*,*],1,/nan) / TOTAL(gridmn[n1:n2,*,*],1)
+        valpyz = total(valp[n1:n2,*,*] * gridpn[n1:n2,*,*],1,/nan) / TOTAL(gridpn[n1:n2,*,*],1)
+        print, 'First Figure...'
+        print, 'Slice ' + strcompress(string(i1))
+        wi,0, xs=1000,ys=900
+        wset,0
+        opt1 = opt
+        str_element,opt1, 'title', '-By IMF', /add
+        bx_drape_specplot, valmyz, limits = opt1
+        stop
+        print, 'Second Figure...'
+        opt1 = opt
+        str_element,opt1, 'title', '+By IMF', /add
+        bx_drape_specplot, valpyz, limits = opt1
+        stop
       endfor
       return
     endif

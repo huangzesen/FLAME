@@ -12,7 +12,7 @@ follows:
 
 For example:
 
-'flm_infod_init'
+'flm_info_init'
  means this procedure initiate the infotable.
 
  ## Procedure List
@@ -28,3 +28,11 @@ For example:
  ### FLM_INFO_RESTORE
 
  Restore infotable from disk.
+
+ ### FLM_INFO_SAVE
+
+ ### FLM_INFO_ADDTAG
+
+ ### FLM_PLOT_MAIN
+
+ ### FLM_PLOT_STAMP

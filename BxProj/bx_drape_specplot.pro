@@ -6,7 +6,7 @@
 ; Please make a window before using this procedure
 ;
 ;USAGE:	
-; bx_drape_specplot, val, gridn, [limits = limits], [/noexe]
+; bx_drape_specplot, val, [gridn], [limits = limits], [/noexe]
 ;
 ;INPUTS:	
 ;
@@ -74,16 +74,7 @@ switch (n_params()) of
     endif
     ; sum up the matrix
     val0 = val
-    npix = (size(val, /dimensions))[0]
-    halfnpix = floor(npix/2)
-    val = replicate(!values.f_nan, npix, npix)
-    for i1 = 0, npix-1 do begin
-      for j1 = 0, npix-1 do begin
-        val[i1, j1] = $
-        total(val0[0:halfnpix, i1, j1] * gridn[0:halfnpix, i1, j1], /nan) / $
-        total(gridn[0:halfnpix, i1, j1])
-      endfor
-    endfor
+    val = total(val0*gridn,1,/nan) / total(gridn,1,/nan)
     break
   end
   ; Error
