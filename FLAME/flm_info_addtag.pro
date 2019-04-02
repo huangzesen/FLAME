@@ -1,5 +1,5 @@
 ;+
-;Procedure:	flm_info_addtag
+;Function:	flm_info_addtag
 ;
 ;PURPOSE:	
 ; This procedure add tag to info structure array (infotable) .
@@ -7,9 +7,9 @@
 ; 
 ;USAGE:	
 ; 
-; flm_info_addtag, infotable, tagname, [vartype = vartype], [defval = defval]
+; infotablenew = flm_info_addtag(infotable, tagname, [vartype = vartype], [defval = defval])
 ; 
-; flm_info_addtag, infotable, tagname, /remtag
+; infotablenew = flm_info_addtag(infotable, tagname, /remtag)
 ;
 ;INPUTS:	
 ; INFOTABLE: flux rope information structure array
@@ -63,7 +63,7 @@ endif else if keyword_set(vartype) then begin
       break
     end
     ('POINTER'): begin
-      if ~keyword_set(defval) then defval = PTR_NEW(0)
+      if ~keyword_set(defval) then defval = PTR_NEW()
       break
     end
     else: begin

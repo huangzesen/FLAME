@@ -70,7 +70,7 @@ endif
 
 
 ;-------------------------Save to IDL sav files or CSV-------------------------;
- 
+datestr = (time_string(systime(/seconds))).substring(0,10)
 if ~keyword_set(csv) then begin
 ; IDL sav files
 
@@ -93,6 +93,7 @@ if ~keyword_set(csv) then begin
     endif
   endif else begin
     dprint, verbose = verbose, 'Writting to ...', savname
+    file_mkdir,file_dirname(savname)
     save, infotable, filename = savname
   endelse  
 
@@ -148,7 +149,6 @@ endif else if keyword_set(csv) then begin
   
 
   ; check file existence and save
-  datestr = (time_string(systime(/seconds))).substring(0,10)
   if ~keyword_set(nodatestr) then begin
     csvname = infopath + datestr + infoname + infover + '.csv'
     if ~file_test(infopath, /directory) then file_mkdir, infopath+datestr
