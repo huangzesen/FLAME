@@ -132,7 +132,7 @@ if keyword_set(noexecution) then begin
     delvar, opt_preview
     opt0 = {flag: 0, nslice: 3, alt: 1000D, npixel: 201}
     if ~keyword_set(opt_preview0) then begin
-      opt_preview = create_struct(mode,'average', 'minmaxval', 1, opt0)
+      opt_preview = create_struct('mode','average', 'minmaxval', 1, opt0)
     endif else begin
       tags0 = tag_names(opt0)
       tags1 = tag_names(opt_preview0)
@@ -280,14 +280,18 @@ if keyword_set(noexecution) then begin
         wi,0, xs=1000,ys=900
         wset,0
         opt1 = opt
-        str_element,opt1, 'title', '-By IMF', /add
+        str_element,opt1, 'title', '-By IMF'+strcompress(string(i1+1)), /add
         bx_drape_specplot, valmyz, limits = opt1
         stop
+        makepng,'/home/huangzs/work/thesis/analysis/norm_bx_proj/figures/slice/MSE/' + $
+          '-By-IMF-MSE-'+strcompress(string(i1+1),/remove_all)+'-61npix'
         print, 'Second Figure...'
         opt1 = opt
-        str_element,opt1, 'title', '+By IMF', /add
+        str_element,opt1, 'title', '+By IMF'+strcompress(string(i1+1)), /add
         bx_drape_specplot, valpyz, limits = opt1
         stop
+        makepng,'/home/huangzs/work/thesis/analysis/norm_bx_proj/figures/slice/MSE/' + $
+          '+By-IMF-MSE-'+strcompress(string(i1+1),/remove_all)+'-61npix'
       endfor
       return
     endif
@@ -306,7 +310,7 @@ endif
 ;---------------------------Start of Part 2------------------------------------;
 ; some constants
 Rmars = 3389D
-npix = 201
+npix = 61
 halfnpix = floor(npix/2)
 if ~keyword_set(orbstart) then orbstart0 = 212 else orbstart0 = orbstart & undefine, orbstart
 if ~keyword_set(orbend) then orbend0 = 7640 else orbend0 = orbend & undefine, orbend

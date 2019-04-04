@@ -35,6 +35,7 @@ pro flm_info_restore, infotable, $
   infopath = infopath, $
   infoname = infoname, $
   infover = infover, $
+  mission = mission, $
   noexecution = noexecution, $
   verbose = verbose, $
   csv = csv, $
@@ -45,7 +46,7 @@ pro flm_info_restore, infotable, $
 compile_opt idl2
 
 ; restore paths and file names
-flm_info_init, /noexe, infopath = infopath0, infoname = infoname0, infover = infover0
+flm_info_init, /noexe, infopath = infopath0, infoname = infoname0, infover = infover0, mission = mission
 if ~keyword_set(infopath) then infopath = infopath0
 if ~keyword_set(infoname) then infoname = infoname0
 if ~keyword_set(infover) then infover = infover0

@@ -32,7 +32,7 @@ compile_opt idl2
 if keyword_set(infotable) then keys = infotable.key
 
 ; random array
-rarr = long(randomu(seed, 1000, /double) * 90D + 10D)
+rarr = long(randomu(seed, 1000, /double) * 900D + 100D)
 
 ; time string
 timestr = time_string(frpar.mtime, format = 6)

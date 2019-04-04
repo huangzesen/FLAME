@@ -19,9 +19,13 @@
 ; 
 ; FRPARPATH, INFOPATH, INFOVER, INFONAME : return various paths and file names.
 ; 
+; MISSION: flux rope infotable from different mission, can be 'VEX' or 'MVN'
+; 
 ; NOEXECUTION: do nothing and return
 ; 
 ; NODATESTR: discard date string in the save path
+; 
+; IMPORT: import infotable from other places and assign a key for them
 ; 
 ;CREATED BY: 	 huangzs on Mar 25, 2019
 ;UPDATES:	
@@ -33,16 +37,60 @@ pro flm_info_init, $
   infopath = infopath, $
   infover = infover, $
   infoname = infoname, $
-  noexecution = noexecution
+  mission = mission, $
+  import = import, $
+  noexecution = noexecution, $
+  _extra = ex
 
 compile_opt idl2
 
-frparpath = '/home/hara/work/analysis/vex/flux_rope/shadow/'
-infopath = '/home/huangzs/work/thesis/analysis/vexinfo/infotable/'
-infover = 'v0.0'
-infoname = 'vex_info_'
+if ~keyword_set(mission) then mission = 'VEX'
+
+switch (mission) of
+  ('VEX'): begin
+    frparpath = '/home/hara/work/analysis/vex/flux_rope/shadow/'
+    infopath = '/home/huangzs/work/thesis/analysis/vex/vexinfo/infotable/'
+    infover = 'v0.0'
+    infoname = 'vex_info_'
+    break
+  end
+  ('MVN'): begin
+    frparpath = '/home/hara/work/analysis/maven/flux_rope/shadow/'
+    infopath = '/home/huangzs/work/thesis/analysis/mvn/mvninfo/infotable/'
+    infover = 'v0.0'
+    infoname = 'mvn_info_'
+    break
+  end
+  else: begin
+    print, 'Mission '+mission+' not supported!'
+    return
+  end
+endswitch
+
+
+
 
 if keyword_set(noexecution) then return
+
+; import infotable from MAVEN project
+if keyword_set(import) then begin
+  extags = tag_names(ex)
+  if total(strmatch(extags, 'importpath', /FOLD_CASE)) then $
+    importpath = ex.importpath else begin
+      importpath = ''
+      read, 'Import path: ', importpath
+    endelse
+  files = file_search(importpath, '*.sav')
+  for i1 = 0, n_elements(files)-1  do begin
+    print, strcompress(string(i1)), files[i1]
+  endfor
+  read, 'Choose sav file: ', ind
+  restore, files[ind]
+  stop
+    
+  return
+endif
+
 
 ; find the sav files
 files = file_search(frparpath,'*.sav')

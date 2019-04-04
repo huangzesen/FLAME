@@ -66,6 +66,17 @@ endif else if keyword_set(vartype) then begin
       if ~keyword_set(defval) then defval = PTR_NEW()
       break
     end
+    ('STRING'): begin
+      if ~keyword_set(defval) then defval = ''
+      break
+    end
+    ('STRUCT'): begin
+      if ~keyword_set(defval) then begin
+        print, 'Error!','Type: STRUCT, please provide a default value!'
+        return, !NULL
+      endif
+      break
+    end
     else: begin
       dprint, vartype, ' Unsupported date type.'
       return, 0
