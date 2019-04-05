@@ -41,7 +41,7 @@ if ~keyword_set(remtag) then addtag = 1
 
 ; default values
 if ~keyword_set(vartype) then begin
-  vartype = 'FLOAT'
+  vartype = 'LONG'
   defval = !values.f_nan
 endif else if keyword_set(vartype) then begin
 
@@ -91,9 +91,18 @@ if keyword_set(remtag) then begin
   if total(ind) lt 1 then begin
     print, 'No tag name matched!'
     print, 'Returning ...'
-    return, 0
+    return, infotable
   endif
   tagind = where(ind eq 0) 
+endif
+
+; Check tag duplication
+tagnames = tag_names(infotable)
+ind = strmatch(tagnames, tagname, /FOLD_CASE)
+if total(ind) ne 0 then begin
+  print, 'Duplicated tag name!'
+  print, 'Tag: ', strupcase(tagname)
+  return, infotable
 endif
 
 

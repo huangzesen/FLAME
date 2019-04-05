@@ -38,7 +38,7 @@ end
 ;-
 pro stack::GetProperty, data=data, next=next,  _REF_EXTRA=extra
   compile_opt idl2
-  data = self.data
+  if self.data ne !NULL then data = *(self.data) else data = !NULL
   next = self.next
 end
 
@@ -51,7 +51,7 @@ end
 ;-
 pro stack::SetProperty, data=data, next=next, _EXTRA=extra
   compile_opt idl2
-  if n_elements(data) then self.data=data
+  if n_elements(data) then self.data=ptr_new(data)
   if n_elements(next) then self.next=next
 end
 
@@ -79,19 +79,20 @@ function stack::GetTop, _Extra=extra
 end
 
 ;+
-; Push()
+; Push
 ; Arguments:
 ;   ptr: pointer to the new element
 ; :Description:
 ;     This procedure pushes a new elem to the stack
 ;-
-function stack::Push, ptr, _Extra=extra
+pro stack::Push, data, _Extra=extra
   compile_opt idl2
-
-  ptr.next = self.next
-  self.next = ptr
+  ptr = ptr_new(data)
+  elem = obj_new('stack', data=ptr)
+  elem.next = self.next
+  self.next = ptr_new(elem)
   
-  return, self
+  return
 end
 
 ;+
@@ -104,8 +105,9 @@ function stack::Pop, _Extra=extra
 
   if self.IsEmpty() then return, !NULL else begin
     elem = *(self.next)
-    self.next = self.next.next
-    return, elem
+    nextelem = *(self.next)
+    self.next = nextelem.next
+    return, *(elem.data)
   endelse
   
 end
@@ -120,10 +122,28 @@ end
 function stack::Save, filename=filename, _Extra=extra
   compile_opt idl2
   
-  if n_elements(filename) then save, self, filename=filename
+  if keyword_set(filename) then save, self, filename=filename
   
   return,1
 end
+
+;+
+; len()
+; :Description:
+;			length of the stack
+;-
+function stack::Len
+  compile_opt idl2
+
+  len = 0
+  elem = self
+  while(elem.next ne !NULL) do begin
+    elem = *(self.next)
+    len = len + 1
+  endwhile
+  return, len
+end
+
 
 ;-------------------------------------------------------------------------------
 ;+
