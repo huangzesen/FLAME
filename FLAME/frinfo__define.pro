@@ -78,7 +78,7 @@ pro frinfo::View, figptr = figptr
   end 
   
   figptr = data.figptr
-  if figptr ne !NULL then $
+  if figptr ne !NULL and file_test(*figptr) then $
     SPAWN, 'gnome-open ' + *figptr else $
     print, 'No figure saved!'
   

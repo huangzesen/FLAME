@@ -23,7 +23,9 @@ pro flm_label_main, $
   mission = mission, $
   amount = amount, $
   lname = lname, $
-  ldefval = ldefval
+  ldefval = ldefval, $
+  start1 = start1, $
+  end1 = end1
 
 compile_opt idl2
 
@@ -63,6 +65,8 @@ itfullsavname = itfiles[ind]
 ; Restore label stack file
 lsfiles = file_search(lstackpath, '*.sav')
 if keyword_set(lsfiles) ne 0 then begin
+  for i1 = 0, n_elements(lsfiles)-1 do $
+    print, strcompress(string(i1)), lsfiles[i1]
   read, 'Select a label stack file (Enter -1 to make a new one): ', ind
 
   if ind ne -1 then begin
@@ -84,6 +88,8 @@ if ~n_elements(lstack) then lstack = obj_new('stack')
 ;----------------------------------------;
 ; Main label loop              
 ;----------------------------------------;
+if ~keyword_set(start1) then start1 = 0
+if ~keyword_set(end1) then end1 = n_elements(infotable)-1
 if ~keyword_set(lname) then begin
   print, 'Existing tags:'
   (infotable[0]).gettags, tags = tags
@@ -93,7 +99,7 @@ if ~keyword_set(lname) then begin
 endif
 if ~keyword_set(ldefval) then ldefval = -1
 
-for i1 = 0, n_elements(infotable)-1 do begin
+for i1 = start1, end1 do begin
   
   info = infotable[i1]
   
@@ -101,7 +107,8 @@ for i1 = 0, n_elements(infotable)-1 do begin
   info.lgetval, lname, val0
   if val0 ne ldefval then continue
   
-  info.view
+  info.view, figptr = figptr
+  if figptr ne !NULL then print, 'Figure path: ', *figptr
   print, 'Label name: ', lname
   print, 'enter -2 to retrieve, -3 to exit, '
   read, 'Label value: ', lval
@@ -113,12 +120,12 @@ for i1 = 0, n_elements(infotable)-1 do begin
       print, 'Retriving the stack...'
 
       ; Retrieve history and push into retstack
+      retstack = obj_new('stack')
       while(~lstack.IsEmpty()) do begin
-        retstack = obj_new('stack')
         elem = lstack.pop()
         elem.view
         retstack.push,elem
-        print, 'Continue? ', 'Enter y to continue, n to stop'
+        FLAG1: print, 'Continue? ', 'Enter y to continue, n to stop'
         strflag = ''
         read, strflag
         
@@ -129,6 +136,7 @@ for i1 = 0, n_elements(infotable)-1 do begin
         endif else begin 
           print, 'Wrong input!'
           stop 
+          goto, FLAG1
         endelse
         
       endwhile
@@ -180,8 +188,10 @@ for i1 = 0, n_elements(infotable)-1 do begin
         infotable[idx] = info
       endif
       lstack.push,info
+      print, 'Ind: ', i1+1, ' Out of ', n_elements(infotable)
     end
   endswitch
+  
   
 endfor
 ; End of main loop
@@ -217,6 +227,7 @@ for i1 = 0, n_elements(ltfiles)-1 do $
   print, strcompress(string(i1)), ltfiles[i1]
 
 print, 'Overwrite the old infotable?'
+print, 'Old infotable: ', itfullsavname
 flagstr = ''
 read, 'Type YES to overwrite: ', flagstr
 if flagstr eq 'YES' then $
